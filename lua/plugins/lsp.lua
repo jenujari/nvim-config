@@ -7,9 +7,11 @@ return {
 			"WhoIsSethDaniel/mason-tool-installer.nvim",
 		},
 		config = function()
-			vim.lsp.config('gopls',{})
-			vim.lsp.config('htmx',{})
-			vim.lsp.config('tailwindcss',{})
+			-- Define configuration overrides for servers
+			vim.lsp.config('gopls', {})
+			vim.lsp.config('htmx', {})
+			vim.lsp.config('tailwindcss', {})
+			vim.lsp.config('ts_ls', {})
 			vim.lsp.config('lua_ls', {
 				settings = {
 					Lua = {
@@ -32,31 +34,53 @@ return {
 				},
 			})
 
-			-- ==========================================
-			-- 🚀 Advanced LSP Keybindings
-			-- ==========================================
+			-- Enable the LSP servers
+			vim.lsp.enable({ 'gopls', 'htmx', 'tailwindcss', 'lua_ls', 'ts_ls' })
 
-			-- 📍 Navigation (Code mein ghoomne ke liye)
-			-- vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, { desc = "Go to Declaration" })
-			-- vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { desc = "Go to Definition" })
-			-- vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, { desc = "Go to Implementation" })
-			-- vim.keymap.set('n', 'gr', vim.lsp.buf.references, { desc = "Show all References" })
-      -- above once are shifted to snacks.nvim plugin 
+			-- Set up LSP Attach Autocommand for buffer-local settings
+			vim.api.nvim_create_autocmd('LspAttach', {
+				desc = 'LSP actions and keybindings',
+				callback = function(event)
+					local opts = { buffer = event.buf }
 
+					-- ℹ️ Information (Details dekhne ke liye)
+					vim.keymap.set('n', 'K', vim.lsp.buf.hover, vim.tbl_extend('force', opts, { desc = "Hover Documentation" }))
+					vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, vim.tbl_extend('force', opts, { desc = "Signature Help (Parameters)" }))
 
-			-- ℹ️ Information (Details dekhne ke liye)
-			vim.keymap.set('n', 'K', vim.lsp.buf.hover, { desc = "Hover Documentation" })
-			vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, { desc = "Signature Help (Parameters)" })
+					-- 🛠️ Refactoring & Actions (Code change karne ke liye)
+					vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, vim.tbl_extend('force', opts, { desc = "Rename Variable/Function" }))
+					vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, vim.tbl_extend('force', opts, { desc = "Code Actions (Fixes)" }))
+					vim.keymap.set('n', '<leader>f', function() vim.lsp.buf.format { async = true } end, vim.tbl_extend('force', opts, { desc = "Format Code" }))
 
-			-- 🛠️ Refactoring & Actions (Code change karne ke liye)
-			vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, { desc = "Rename Variable/Function" })
-			vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, { desc = "Code Actions (Fixes)" })
-			vim.keymap.set('n', '<leader>f', function() vim.lsp.buf.format { async = true } end, { desc = "Format Code" })
+					-- 🚨 Diagnostics (Errors aur Warnings ke liye)
+					vim.keymap.set('n', 'gl', vim.diagnostic.open_float, vim.tbl_extend('force', opts, { desc = "Show Line Diagnostics (Error message)" }))
+					vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, vim.tbl_extend('force', opts, { desc = "Go to Previous Error/Warning" }))
+					vim.keymap.set('n', ']d', vim.diagnostic.goto_next, vim.tbl_extend('force', opts, { desc = "Go to Next Error/Warning" }))
 
-			-- 🚨 Diagnostics (Errors aur Warnings ke liye)
-			vim.keymap.set('n', 'gl', vim.diagnostic.open_float, { desc = "Show Line Diagnostics (Error message)" })
-			vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = "Go to Previous Error/Warning" })
-			vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = "Go to Next Error/Warning" })
+					-- Get client for capabilities checking
+					local client = vim.lsp.get_client_by_id(event.data.client_id)
+
+					-- 📍 Inlay Hints (Native support in Neovim 0.10+)
+					if client and client.supports_method('textDocument/inlayHint') then
+						vim.lsp.inlay_hint.enable(true, { bufnr = event.buf })
+					end
+
+					-- 📍 Document highlighting (under cursor reference highlighting)
+					if client and client.supports_method('textDocument/documentHighlight') then
+						local highlight_group = vim.api.nvim_create_augroup('lsp_document_highlight_' .. event.buf, { clear = true })
+						vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+							group = highlight_group,
+							buffer = event.buf,
+							callback = vim.lsp.buf.document_highlight,
+						})
+						vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+							group = highlight_group,
+							buffer = event.buf,
+							callback = vim.lsp.buf.clear_references,
+						})
+					end
+				end,
+			})
 		end
 	},
 	{
@@ -79,12 +103,5 @@ return {
 	{
 		"mason-org/mason-lspconfig.nvim",
 		opts = {},
-	},
-	{
-    "MysticalDevil/inlay-hints.nvim",
-    event = "LspAttach",
-    config = function()
-      require("inlay-hints").setup()
-    end,
-  }
+	}
 }
