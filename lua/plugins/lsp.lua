@@ -93,6 +93,7 @@ return {
 				"ts_ls",
 				"htmx",
 				"tailwindcss",
+				"delve",
 			}
 		}
 	},
