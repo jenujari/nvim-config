@@ -9,9 +9,11 @@ return {
     { "rafamadriz/friendly-snippets" },
     {
         "Saghen/blink.cmp",
-        -- 'version' tag add karne se pre-built binary download hoti hai 
-        -- aur 'build' function ki zaroorat nahi padti.
-        version = "*",
+        -- Pin to the v1 line. Tracking main pulls the v2 dev branch, which
+        -- requires the extra 'saghen/blink.lib' dependency and errors on load.
+        -- No 'build' step: v1 ships prebuilt fuzzy matchers for both glibc and
+        -- musl, so this needs no Rust toolchain on any distro.
+        version = "1.*",
         dependencies = {
             'rafamadriz/friendly-snippets',
         },
